@@ -1,5 +1,5 @@
 import express from "express";
-import ytdlp from "yt-dlp-exec";
+import { exec } from "child_process";
 import cors from "cors";
 import fs from "fs";
 
@@ -20,20 +20,17 @@ app.get("/download", async (req, res) => {
 
     let outputFile = "output.mp3";
 
-    try {
-        await ytdlp(url, {
-            format: "bestaudio",
-            output: outputFile
-        });
+    exec(`./bin/yt-dlp -f "bestaudio" -o ${outputFile} ${url}`, (error, stdout, stderr) => {
+        if (error) {
+            console.error(error);
+            return res.status(500).send("❌ Error downloading video.");
+        }
 
         res.download(outputFile, "audio.mp3", (err) => {
             if (err) console.error(err);
             fs.unlinkSync(outputFile); // Delete file after sending
         });
-    } catch (error) {
-        console.error(error);
-        res.status(500).send("❌ Error downloading video.");
-    }
+    });
 });
 
 app.listen(PORT, () => {
