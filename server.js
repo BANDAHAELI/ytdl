@@ -1,38 +1,23 @@
-import express from "express";
-import { exec } from "child_process";
-import cors from "cors";
-import fs from "fs";
-
+const express = require('express');
+const ytdl = require('ytdl-core');
 const app = express();
-const PORT = process.env.PORT || 3000;
+const port = 3000;
 
-app.use(cors());
-app.use(express.json());
+app.get('/download', async (req, res) => {
+    const videoURL = req.query.url;
+    if (!ytdl.validateURL(videoURL)) {
+        return res.status(400).send('Invalid YouTube URL');
+    }
 
-app.get("/", (req, res) => {
-    res.send("YT-DLP API is running! Use /download?url=YOUR_YOUTUBE_LINK");
+    try {
+        const info = await ytdl.getInfo(videoURL);
+        const format = ytdl.chooseFormat(info.formats, { quality: 'highest' });
+        res.json({ downloadURL: format.url });
+    } catch (error) {
+        res.status(500).send('Error fetching video info');
+    }
 });
 
-// Download route
-app.get("/download", async (req, res) => {
-    let url = req.query.url;
-    if (!url) return res.status(400).send("❌ Please provide a YouTube URL!");
-
-    let outputFile = "output.mp3";
-
-    exec(`./bin/yt-dlp -f "bestaudio" -o ${outputFile} ${url}`, (error, stdout, stderr) => {
-        if (error) {
-            console.error(error);
-            return res.status(500).send("❌ Error downloading video.");
-        }
-
-        res.download(outputFile, "audio.mp3", (err) => {
-            if (err) console.error(err);
-            fs.unlinkSync(outputFile); // Delete file after sending
-        });
-    });
-});
-
-app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
+app.listen(port, () => {
+    console.log(`Server is running on http://localhost:${port}`);
 });
